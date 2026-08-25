@@ -250,11 +250,14 @@ a {
   .consolidated-order {
     break-inside: avoid-page !important;
     page-break-inside: avoid !important;
-    margin-bottom: 10mm !important;
+    /* Chrome can discard margins at print fragmentation boundaries. Padding is
+       part of the protected order box, so this always leaves a real 10 mm gap. */
+    margin-bottom: 0 !important;
+    padding-bottom: 10mm !important;
   }
 
   .consolidated-order:last-of-type {
-    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
   }
 
   .consolidated-order table,
