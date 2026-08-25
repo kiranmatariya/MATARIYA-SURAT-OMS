@@ -1,0 +1,5 @@
+ALTER TABLE "products"
+ADD COLUMN "weight_per_piece_kg" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+ALTER TABLE "dispatch_items"
+ADD COLUMN "unit_weight_kg" DOUBLE PRECISION NOT NULL DEFAULT 0;

@@ -1,0 +1,409 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductType {
+  NORMAL
+  FAN_ROD
+}
+
+enum RunningOrderState {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  email           String   @unique
+  emailVerified   Boolean  @default(false) @map("email_verified")
+  name            String
+  image           String?
+  username        String?  @unique
+  displayUsername String?  @map("display_username")
+  role            String   @default("OFFICE_STAFF")
+  active          Boolean  @default(true)
+  banned          Boolean? @default(false)
+  banReason       String?  @map("ban_reason")
+  banExpires      DateTime? @map("ban_expires")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  sessions        Session[]
+  accounts        Account[]
+  createdOrderAdditions OrderAddition[] @relation("OrderAdditionCreator")
+  createdDispatches Dispatch[] @relation("DispatchCreator")
+  createdCancellations CancellationReduction[] @relation("CancellationCreator")
+  @@map("users")
+}
+
+model Session {
+  id             String   @id @default(uuid()) @db.Uuid
+  expiresAt      DateTime @map("expires_at")
+  token          String   @unique
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  userId         String   @db.Uuid @map("user_id")
+  impersonatedBy String?  @map("impersonated_by")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String   @id @default(uuid()) @db.Uuid
+  accountId             String   @map("account_id")
+  providerId            String   @map("provider_id")
+  userId                String   @db.Uuid @map("user_id")
+  accessToken           String?  @map("access_token")
+  refreshToken          String?  @map("refresh_token")
+  idToken               String?  @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                  String?
+  password               String?
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model Dealer {
+  id                    String   @id @default(uuid()) @db.Uuid
+  name                  String
+  contactPerson         String   @default("") @map("contact_person")
+  mobileNumber          String   @default("") @map("mobile_number")
+  alternateMobileNumber String   @default("") @map("alternate_mobile_number")
+  address               String   @default("")
+  city                  String   @default("")
+  state                 String   @default("")
+  gstNumber             String   @default("") @map("gst_number")
+  transport             String   @default("")
+  bookingCenter         String   @default("") @map("booking_center")
+  remarks               String   @default("")
+  status                RecordStatus @default(ACTIVE)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  masterAreaId          String   @db.Uuid @map("master_area_id")
+  masterArea            MasterArea @relation(fields: [masterAreaId], references: [id], onDelete: Restrict)
+  runningOrder          RunningOrder?
+  orderAdditions        OrderAddition[]
+  dispatches            Dispatch[]
+  cancellations         CancellationReduction[]
+  @@index([name])
+  @@index([city])
+  @@index([mobileNumber])
+  @@index([gstNumber])
+  @@index([status])
+  @@index([masterAreaId, status])
+  @@map("dealers")
+}
+
+model MasterArea {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String @unique
+  sortOrder Int @default(0) @map("sort_order")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  dealers Dealer[]
+  runningOrders RunningOrder[]
+  orderAdditions OrderAddition[]
+  dispatches Dispatch[]
+  cancellations CancellationReduction[]
+  @@index([status, sortOrder])
+  @@map("master_areas")
+}
+
+model Product {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String   @default("")
+  category  String   @default("")
+  unit      String   @default("PCS")
+  weightPerPieceKg Float @default(0) @map("weight_per_piece_kg")
+  type      ProductType @default(NORMAL)
+  remarks   String   @default("")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  additionItems OrderAdditionItem[]
+  dispatchItems DispatchItem[]
+  cancellationItems CancellationReductionItem[]
+  lineNotes RunningOrderLineNote[]
+  @@index([code])
+  @@index([name])
+  @@index([category])
+  @@index([status, type])
+  @@map("products")
+}
+
+model FanRodSize {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  code      String @default("")
+  sortOrder Int @default(0) @map("sort_order")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  additionItems OrderAdditionItem[]
+  dispatchItems DispatchItem[]
+  cancellationItems CancellationReductionItem[]
+  lineNotes RunningOrderLineNote[]
+  variantWeights FanRodVariantWeight[]
+  @@unique([name])
+  @@index([status, sortOrder])
+  @@map("fan_rod_sizes")
+}
+
+model FanRodColour {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  code      String @default("")
+  sortOrder Int @default(0) @map("sort_order")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  additionItems OrderAdditionItem[]
+  dispatchItems DispatchItem[]
+  cancellationItems CancellationReductionItem[]
+  lineNotes RunningOrderLineNote[]
+  @@unique([name])
+  @@index([status, sortOrder])
+  @@map("fan_rod_colours")
+}
+
+model FanRodGauge {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  code      String @default("")
+  sortOrder Int @default(0) @map("sort_order")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  additionItems OrderAdditionItem[]
+  dispatchItems DispatchItem[]
+  cancellationItems CancellationReductionItem[]
+  lineNotes RunningOrderLineNote[]
+  variantWeights FanRodVariantWeight[]
+  @@unique([name])
+  @@index([status, sortOrder])
+  @@map("fan_rod_gauges")
+}
+
+model FanRodVariantWeight {
+  id               String   @id @default(uuid()) @db.Uuid
+  gaugeId          String   @db.Uuid @map("gauge_id")
+  sizeId           String   @db.Uuid @map("size_id")
+  weightPerPieceKg Float    @map("weight_per_piece_kg")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  gauge             FanRodGauge @relation(fields: [gaugeId], references: [id], onDelete: Restrict)
+  size              FanRodSize @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  @@unique([gaugeId, sizeId])
+  @@index([sizeId])
+  @@map("fan_rod_variant_weights")
+}
+
+model RunningOrder {
+  id                   String @id @default(uuid()) @db.Uuid
+  orderNumber          String @unique @map("order_number")
+  dealerId             String @unique @db.Uuid @map("dealer_id")
+  masterAreaId         String? @db.Uuid @map("master_area_id")
+  masterAreaName       String @default("") @map("master_area_name")
+  orderDate            DateTime @db.Date @map("order_date")
+  customerReference    String @default("") @map("customer_reference")
+  expectedDispatchDate DateTime? @db.Date @map("expected_dispatch_date")
+  remarks              String @default("")
+  state                RunningOrderState @default(DRAFT)
+  confirmedAt          DateTime? @map("confirmed_at")
+  cancelledAt          DateTime? @map("cancelled_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  dealer               Dealer @relation(fields: [dealerId], references: [id], onDelete: Restrict)
+  masterArea           MasterArea? @relation(fields: [masterAreaId], references: [id], onDelete: Restrict)
+  additions            OrderAddition[]
+  dispatches           Dispatch[]
+  cancellations        CancellationReduction[]
+  lineNotes            RunningOrderLineNote[]
+  @@index([orderDate])
+  @@index([state])
+  @@map("running_orders")
+}
+
+model RunningOrderLineNote {
+  id             String @id @default(uuid()) @db.Uuid
+  runningOrderId String @db.Uuid @map("running_order_id")
+  lineKey        String @map("line_key")
+  productId      String @db.Uuid @map("product_id")
+  gaugeId        String? @db.Uuid @map("gauge_id")
+  sizeId         String? @db.Uuid @map("size_id")
+  colourId       String? @db.Uuid @map("colour_id")
+  remarks        String @default("")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  runningOrder RunningOrder @relation(fields: [runningOrderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  gauge FanRodGauge? @relation(fields: [gaugeId], references: [id], onDelete: Restrict)
+  size FanRodSize? @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  colour FanRodColour? @relation(fields: [colourId], references: [id], onDelete: Restrict)
+  @@unique([runningOrderId, lineKey])
+  @@map("running_order_line_notes")
+}
+
+model OrderAddition {
+  id String @id @default(uuid()) @db.Uuid
+  referenceNumber String @unique @map("reference_number")
+  runningOrderId String @db.Uuid @map("running_order_id")
+  dealerId String @db.Uuid @map("dealer_id")
+  masterAreaId String? @db.Uuid @map("master_area_id")
+  masterAreaName String @default("") @map("master_area_name")
+  additionDate DateTime @db.Date @map("addition_date")
+  customerReference String @default("") @map("customer_reference")
+  expectedDispatchDate DateTime? @db.Date @map("expected_dispatch_date")
+  remarks String @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  createdById String? @db.Uuid @map("created_by_id")
+  runningOrder RunningOrder @relation(fields: [runningOrderId], references: [id], onDelete: Cascade)
+  dealer Dealer @relation(fields: [dealerId], references: [id], onDelete: Restrict)
+  masterArea MasterArea? @relation(fields: [masterAreaId], references: [id], onDelete: Restrict)
+  items OrderAdditionItem[]
+  createdBy User? @relation("OrderAdditionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([dealerId, additionDate])
+  @@index([runningOrderId, createdAt])
+  @@index([createdById])
+  @@map("order_additions")
+}
+
+model OrderAdditionItem {
+  id String @id @default(uuid()) @db.Uuid
+  additionId String @db.Uuid @map("addition_id")
+  productId String @db.Uuid @map("product_id")
+  gaugeId String? @db.Uuid @map("gauge_id")
+  sizeId String? @db.Uuid @map("size_id")
+  colourId String? @db.Uuid @map("colour_id")
+  quantity Int
+  remarks String @default("")
+  addition OrderAddition @relation(fields: [additionId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  gauge FanRodGauge? @relation(fields: [gaugeId], references: [id], onDelete: Restrict)
+  size FanRodSize? @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  colour FanRodColour? @relation(fields: [colourId], references: [id], onDelete: Restrict)
+  @@index([productId])
+  @@index([productId, gaugeId, sizeId, colourId])
+  @@map("order_addition_items")
+}
+
+model Dispatch {
+  id String @id @default(uuid()) @db.Uuid
+  referenceNumber String @unique @map("reference_number")
+  runningOrderId String @db.Uuid @map("running_order_id")
+  dealerId String @db.Uuid @map("dealer_id")
+  masterAreaId String? @db.Uuid @map("master_area_id")
+  masterAreaName String @default("") @map("master_area_name")
+  dispatchDate DateTime @db.Date @map("dispatch_date")
+  remarks String @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  createdById String? @db.Uuid @map("created_by_id")
+  runningOrder RunningOrder @relation(fields: [runningOrderId], references: [id], onDelete: Restrict)
+  dealer Dealer @relation(fields: [dealerId], references: [id], onDelete: Restrict)
+  masterArea MasterArea? @relation(fields: [masterAreaId], references: [id], onDelete: Restrict)
+  items DispatchItem[]
+  createdBy User? @relation("DispatchCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([dealerId, dispatchDate])
+  @@index([runningOrderId, createdAt])
+  @@index([createdById])
+  @@map("dispatches")
+}
+
+model DispatchItem {
+  id String @id @default(uuid()) @db.Uuid
+  dispatchId String @db.Uuid @map("dispatch_id")
+  productId String @db.Uuid @map("product_id")
+  gaugeId String? @db.Uuid @map("gauge_id")
+  sizeId String? @db.Uuid @map("size_id")
+  colourId String? @db.Uuid @map("colour_id")
+  quantity Int
+  unitWeightKg Float @default(0) @map("unit_weight_kg")
+  remarks String @default("")
+  dispatch Dispatch @relation(fields: [dispatchId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  gauge FanRodGauge? @relation(fields: [gaugeId], references: [id], onDelete: Restrict)
+  size FanRodSize? @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  colour FanRodColour? @relation(fields: [colourId], references: [id], onDelete: Restrict)
+  @@index([productId, gaugeId, sizeId, colourId])
+  @@map("dispatch_items")
+}
+
+model CancellationReduction {
+  id String @id @default(uuid()) @db.Uuid
+  referenceNumber String @unique @map("reference_number")
+  runningOrderId String @db.Uuid @map("running_order_id")
+  dealerId String @db.Uuid @map("dealer_id")
+  masterAreaId String? @db.Uuid @map("master_area_id")
+  masterAreaName String @default("") @map("master_area_name")
+  reductionDate DateTime @db.Date @map("reduction_date")
+  reason String
+  remarks String
+  createdAt DateTime @default(now()) @map("created_at")
+  createdById String? @db.Uuid @map("created_by_id")
+  runningOrder RunningOrder @relation(fields: [runningOrderId], references: [id], onDelete: Restrict)
+  dealer Dealer @relation(fields: [dealerId], references: [id], onDelete: Restrict)
+  masterArea MasterArea? @relation(fields: [masterAreaId], references: [id], onDelete: Restrict)
+  items CancellationReductionItem[]
+  createdBy User? @relation("CancellationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([dealerId, reductionDate])
+  @@index([runningOrderId, createdAt])
+  @@index([createdById])
+  @@map("cancellation_reductions")
+}
+
+model CancellationReductionItem {
+  id String @id @default(uuid()) @db.Uuid
+  cancellationId String @db.Uuid @map("cancellation_id")
+  productId String @db.Uuid @map("product_id")
+  gaugeId String? @db.Uuid @map("gauge_id")
+  sizeId String? @db.Uuid @map("size_id")
+  colourId String? @db.Uuid @map("colour_id")
+  quantity Int
+  remarks String @default("")
+  cancellation CancellationReduction @relation(fields: [cancellationId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  gauge FanRodGauge? @relation(fields: [gaugeId], references: [id], onDelete: Restrict)
+  size FanRodSize? @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  colour FanRodColour? @relation(fields: [colourId], references: [id], onDelete: Restrict)
+  @@index([productId, gaugeId, sizeId, colourId])
+  @@map("cancellation_reduction_items")
+}
+
+model ReferenceCounter {
+  prefix String
+  year Int
+  nextValue Int @default(1) @map("next_value")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@id([prefix, year])
+  @@map("reference_counters")
+}

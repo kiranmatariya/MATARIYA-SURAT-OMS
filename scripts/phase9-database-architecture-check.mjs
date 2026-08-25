@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+const schema = await readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8");
+const migration = await readFile(new URL("../prisma/migrations/20260817000100_initial_postgresql/migration.sql", import.meta.url), "utf8");
+for (const model of ["Dealer","Product","FanRodSize","FanRodColour","FanRodGauge","RunningOrder","OrderAddition","OrderAdditionItem","Dispatch","DispatchItem","CancellationReduction","CancellationReductionItem","ReferenceCounter","User"]) assert.match(schema,new RegExp(`model ${model} \\{`));
+for (const table of ["order_additions","dispatches","cancellation_reductions"]) assert.match(migration,new RegExp(`CREATE TABLE "${table}"`));
+assert.match(schema,/dealerId\s+String @unique/);
+assert.match(migration,/quantity_positive" CHECK \("quantity" > 0\)/);
+assert.match(schema,/@@id\(\[prefix, year\]\)/);
+console.log("Phase 9 database architecture checks passed.");

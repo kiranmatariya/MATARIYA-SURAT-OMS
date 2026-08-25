@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+const password="Temporary-Test-Password-2026";
+const hash=await hashPassword(password);
+assert.notEqual(hash,password);assert.equal(await verifyPassword({hash,password}),true);assert.equal(await verifyPassword({hash,password:"wrong-password"}),false);
+const proxy=await readFile(new URL("../src/proxy.ts",import.meta.url),"utf8");
+const orders=await readFile(new URL("../src/app/api/orders/route.ts",import.meta.url),"utf8");
+const users=await readFile(new URL("../src/app/api/users/route.ts",import.meta.url),"utf8");
+const schema=await readFile(new URL("../prisma/schema.prisma",import.meta.url),"utf8");
+const database=await readFile(new URL("../src/server/database.ts",import.meta.url),"utf8");
+const orderService=await readFile(new URL("../src/server/order-service.ts",import.meta.url),"utf8");
+assert.match(proxy,/auth\.api\.getSession/);assert.match(proxy,/\/login/);assert.match(orders,/requireAdmin/);assert.match(users,/requireAdmin/);assert.match(schema,/createdById/);assert.doesNotMatch(schema,/passwordHash/);
+assert.match(database,/timeout: 20_000/);assert.match(orderService,/\["P2028", "P2034"\]/);
+console.log("Phase 10 security checks passed: scrypt hash/verify, route protection, Admin API guards, transaction attribution, and no plaintext password column.");
