@@ -18,8 +18,8 @@ Requirements: Node.js and a PostgreSQL server you control. No paid service is re
 
 1. Run `npm install`.
 2. Copy `.env.example` to `.env.local`.
-3. Create an empty PostgreSQL database and update `DATABASE_URL`.
-4. Apply the committed migration with `npm run db:deploy`.
+3. Create an empty PostgreSQL database and update `DATABASE_URL` (and `DIRECT_URL` for Supabase/migrations).
+4. Apply the committed migration with `npm run db:deploy`, or rely on `npm run build` which runs migrate + optional admin bootstrap.
 5. Optionally create clearly marked development masters with `npm run db:seed`.
 6. Start with `npm run dev`.
 
@@ -27,11 +27,9 @@ Requirements: Node.js and a PostgreSQL server you control. No paid service is re
 
 Authentication uses Better Auth with PostgreSQL-backed sessions and its built-in `scrypt` password hashing. Configure `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` from `.env.example`; never commit real values.
 
-After applying migrations, temporarily set `FIRST_ADMIN_NAME`, `FIRST_ADMIN_EMAIL`, `FIRST_ADMIN_USERNAME`, and `FIRST_ADMIN_PASSWORD` in `.env.local`, then run:
+Temporarily set `FIRST_ADMIN_NAME`, `FIRST_ADMIN_EMAIL`, `FIRST_ADMIN_USERNAME`, and `FIRST_ADMIN_PASSWORD`. On Vercel, add the same values for the first production deploy; `npm run build` runs migrations and creates the first admin automatically when those vars are present. You can also run `npm run auth:bootstrap-admin` locally.
 
-`npm run auth:bootstrap-admin`
-
-Remove the four temporary credential values afterwards. Bootstrap stops if an administrator already exists. Sign in at `/login`, then use **Settings → Users** to create the second Admin and two Office Staff accounts, reset passwords, or activate/deactivate accounts.
+Remove the four temporary credential values afterwards. Bootstrap skips if an administrator already exists or if the vars are unset. Sign in at `/login`, then use **Settings → Users** to create the second Admin and two Office Staff accounts, reset passwords, or activate/deactivate accounts.
 
 ADMIN can manage masters, users, reductions/cancellations, and protected deletion. OFFICE_STAFF can manage dealer information, add orders, dispatch, view planning/history, and print packing sheets. Product master changes, user management, and reductions/cancellations are enforced as Admin-only on the server.
 
@@ -39,9 +37,9 @@ Set `NEXT_PUBLIC_DATA_PROVIDER="postgres"` only after applying the migration. If
 
 ## Production migration and backup
 
-Back up the intended target first and confirm `DATABASE_URL`. Use `npm run db:deploy` in production; do not use `prisma migrate dev`. The development seed refuses production use unless `ALLOW_DEV_SEED=true` is deliberately set.
+On Vercel, set `DATABASE_URL` (pooler) and `DIRECT_URL` (session/direct on port 5432). Each production build runs `prisma migrate deploy` automatically. Do not use `prisma migrate dev` against production. The development seed refuses production use unless `ALLOW_DEV_SEED=true` is deliberately set.
 
-To move providers later: back up PostgreSQL, restore it into the new PostgreSQL service, change only the server-side `DATABASE_URL`, run `npm run db:deploy`, and run the checks. The UI does not need rebuilding because it depends on repository interfaces rather than Prisma.
+To move providers later: back up PostgreSQL, restore it into the new PostgreSQL service, change `DATABASE_URL` / `DIRECT_URL`, redeploy (or run `npm run db:deploy`), and run the checks. The UI does not need rebuilding because it depends on repository interfaces rather than Prisma.
 
 ## Checks
 
