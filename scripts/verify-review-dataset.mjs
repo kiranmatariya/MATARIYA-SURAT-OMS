@@ -14,7 +14,9 @@ try {
        LEFT JOIN dealers d ON d.master_area_id = a.id AND d.remarks = $1
        LEFT JOIN running_orders o ON o.dealer_id = d.id
        WHERE a.status = 'ACTIVE'
-       GROUP BY a.id, a.name, a.sort_order ORDER BY a.sort_order, a.name`,
+       GROUP BY a.id, a.name, a.sort_order
+       HAVING COUNT(d.id) > 0
+       ORDER BY a.sort_order, a.name`,
       [marker],
     ),
     pool.query(

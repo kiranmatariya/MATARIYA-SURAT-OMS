@@ -18,6 +18,10 @@ export interface Product {
 
 export type ProductInput = Pick<Product, "name" | "code" | "category" | "unit" | "weightPerPieceKg" | "remarks" | "status" | "type">;
 
+export const defaultProductCategoryNames = ["MCB", "RCCB", "Isolator", "Fan Rod", "Switchgear", "Fan Accessories", "Earthing"] as const;
+export interface ProductCategory { id: string; name: string; sortOrder: number; status: RecordStatus; createdAt: string; updatedAt: string }
+export type ProductCategoryInput = Pick<ProductCategory, "name" | "sortOrder" | "status">;
+
 export interface FanRodOption {
   id: string;
   kind: FanRodOptionKind;

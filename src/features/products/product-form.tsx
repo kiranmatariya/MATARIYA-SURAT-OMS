@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { ProductInput } from "@/types/product";
-import { productRepository } from "@/features/repositories";
+import { productCategoryRepository, productRepository } from "@/features/repositories";
 
 const emptyProduct: ProductInput = { name: "", code: "", category: "", unit: "PCS", weightPerPieceKg: 0, remarks: "", status: "ACTIVE", type: "NORMAL" };
-const defaultCategories = ["MCB", "RCCB", "Isolator", "Fan Rod", "Switchgear", "Fan Accessories", "Earthing"];
 const fieldClass = "mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 
 export function ProductForm({ productId }: { productId?: string }) {
@@ -18,10 +17,10 @@ export function ProductForm({ productId }: { productId?: string }) {
   const savingRef = useRef(false);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
-  const [categoryOptions, setCategoryOptions] = useState(defaultCategories);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
 
   useEffect(() => { if (!productId) return; productRepository.getById(productId).then((product) => { if (!product) setNotFound(true); else setValues({ name: product.name, code: product.code, category: product.category, unit: product.unit, weightPerPieceKg: product.weightPerPieceKg ?? 0, remarks: product.remarks, status: product.status, type: product.type }); setLoading(false); }); }, [productId]);
-  useEffect(() => { productRepository.list().then((products) => setCategoryOptions(Array.from(new Set([...defaultCategories, ...products.map((product) => product.category).filter(Boolean)])).sort((left, right) => left.localeCompare(right)))); }, []);
+  useEffect(() => { productCategoryRepository.list().then((categories) => setCategoryOptions(categories.filter((category) => category.status === "ACTIVE" || category.name === values.category).map((category) => category.name))); }, [values.category]);
   function setField<K extends keyof ProductInput>(field: K, value: ProductInput[K]) { setValues((current) => ({ ...current, [field]: value })); if (field === "name") setError(""); }
   async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (savingRef.current) return; const cleaned = { ...values, name: values.name.trim(), code: values.code.trim().toUpperCase(), category: values.category.trim(), unit: values.unit.trim().toUpperCase(), weightPerPieceKg: 0 }; if (!cleaned.name) { setError("Product Name is required."); return; } savingRef.current = true; setSaving(true); try { if (productId) await productRepository.update(productId, cleaned); else await productRepository.create(cleaned); router.push("/products"); } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not save product."); savingRef.current = false; setSaving(false); } }
   if (loading) return <div className="mx-auto max-w-5xl rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">Loading product…</div>;

@@ -1,9 +1,10 @@
-import type { FanRodOption, FanRodVariantWeight, Product } from "@/types/product";
-import type { FanRodOptionRepository, FanRodWeightRepository, ProductRepository } from "./product-repository";
+import { defaultProductCategoryNames, type FanRodOption, type FanRodVariantWeight, type Product, type ProductCategory } from "@/types/product";
+import type { FanRodOptionRepository, FanRodWeightRepository, ProductCategoryRepository, ProductRepository } from "./product-repository";
 
 const PRODUCT_STORAGE_KEY = "matariya-surat-oms:products:v1";
 const OPTION_STORAGE_KEY = "matariya-surat-oms:fan-rod-options:v1";
 const WEIGHT_STORAGE_KEY = "matariya-surat-oms:fan-rod-weights:v1";
+const CATEGORY_STORAGE_KEY = "matariya-surat-oms:product-categories:v1";
 
 const starterProducts: Product[] = [
   { id: "product-fan-rod", name: "Fan Rod", code: "FR", category: "Fan Accessories", unit: "PCS", weightPerPieceKg: 0, remarks: "Select gauge, size and colour while ordering.", status: "ACTIVE", type: "FAN_ROD", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-10T09:00:00.000Z" },
@@ -13,6 +14,7 @@ const starterProducts: Product[] = [
 ];
 
 const now = "2026-08-10T09:00:00.000Z";
+const starterCategories: ProductCategory[] = defaultProductCategoryNames.map((name, index) => ({ id: `category-${index + 1}`, name, sortOrder: index + 1, status: "ACTIVE", createdAt: now, updatedAt: now }));
 const starterOptions: FanRodOption[] = [
   ...["6 inch", "9 inch", "12 inch", "15 inch", "18 inch", "24 inch", "30 inch", "36 inch", "48 inch", "60 inch"].map((name, index) => ({ id: `size-${index + 1}`, kind: "SIZE" as const, name, code: name.replace(" inch", "IN"), status: "ACTIVE" as const, sortOrder: index + 1, createdAt: now, updatedAt: now })),
   ...["White", "Black", "Brown", "Ivory", "Grey", "Gold"].map((name, index) => ({ id: `colour-${index + 1}`, kind: "COLOUR" as const, name, code: name.slice(0, 3).toUpperCase(), status: "ACTIVE" as const, sortOrder: index + 1, createdAt: now, updatedAt: now })),
@@ -48,6 +50,12 @@ export const localProductRepository: ProductRepository = {
     writeList(PRODUCT_STORAGE_KEY, products.map((item) => item.id === id ? updated : item));
     return updated;
   },
+};
+
+export const localProductCategoryRepository: ProductCategoryRepository = {
+  async list() { return readList(CATEGORY_STORAGE_KEY, starterCategories).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)); },
+  async create(input) { const categories = readList(CATEGORY_STORAGE_KEY, starterCategories); if (categories.some((item) => item.name.toLowerCase() === input.name.trim().toLowerCase())) throw new Error("This category already exists."); const timestamp = new Date().toISOString(); const value = { ...input, id: crypto.randomUUID(), name: input.name.trim(), createdAt: timestamp, updatedAt: timestamp }; writeList(CATEGORY_STORAGE_KEY, [...categories, value]); return value; },
+  async update(id, input) { const categories = readList(CATEGORY_STORAGE_KEY, starterCategories), old = categories.find((item) => item.id === id); if (!old) throw new Error("Product category not found."); if (categories.some((item) => item.id !== id && item.name.toLowerCase() === input.name.trim().toLowerCase())) throw new Error("This category already exists."); const value = { ...old, ...input, name: input.name.trim(), updatedAt: new Date().toISOString() }; writeList(CATEGORY_STORAGE_KEY, categories.map((item) => item.id === id ? value : item)); const products = readList(PRODUCT_STORAGE_KEY, starterProducts); writeList(PRODUCT_STORAGE_KEY, products.map((product) => product.category === old.name ? { ...product, category: value.name, updatedAt: value.updatedAt } : product)); return value; },
 };
 
 export const localFanRodOptionRepository: FanRodOptionRepository = {

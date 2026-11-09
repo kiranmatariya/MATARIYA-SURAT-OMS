@@ -1,0 +1,12 @@
+import { database } from "@/server/database";
+import { apiError } from "@/server/api-response";
+import { authorizationError, requireAdmin, requireUser } from "@/server/authorization";
+import type { ProductCategoryInput } from "@/types/product";
+
+const dto = (value: { id: string; name: string; sortOrder: number; status: "ACTIVE" | "INACTIVE"; createdAt: Date; updatedAt: Date }) => ({ ...value, createdAt: value.createdAt.toISOString(), updatedAt: value.updatedAt.toISOString() });
+function clean(input: ProductCategoryInput) { const name = input.name?.trim(); if (!name) throw new Error("Category name is required."); return { name, sortOrder: Number(input.sortOrder) || 0, status: input.status }; }
+async function ensureUnique(name: string, excludeId?: string) { const match = await database.productCategory.findFirst({ where: { name: { equals: name, mode: "insensitive" }, ...(excludeId ? { id: { not: excludeId } } : {}) } }); if (match) throw new Error("This category already exists."); }
+
+export async function GET(request: Request) { try { await requireUser(request.headers); return Response.json((await database.productCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })).map(dto)); } catch (error) { return authorizationError(error) ?? apiError(error); } }
+export async function POST(request: Request) { try { await requireAdmin(request.headers); const { input } = await request.json() as { input: ProductCategoryInput }; const value = clean(input); await ensureUnique(value.name); return Response.json(dto(await database.productCategory.create({ data: value }))); } catch (error) { return authorizationError(error) ?? apiError(error); } }
+export async function PUT(request: Request) { try { await requireAdmin(request.headers); const { id, input } = await request.json() as { id: string; input: ProductCategoryInput }; const value = clean(input); await ensureUnique(value.name, id); const saved = await database.$transaction(async (tx) => { const old = await tx.productCategory.findUnique({ where: { id } }); if (!old) throw new Error("Product category not found."); if (old.name !== value.name) await tx.product.updateMany({ where: { category: old.name }, data: { category: value.name } }); return tx.productCategory.update({ where: { id }, data: value }); }); return Response.json(dto(saved)); } catch (error) { return authorizationError(error) ?? apiError(error); } }

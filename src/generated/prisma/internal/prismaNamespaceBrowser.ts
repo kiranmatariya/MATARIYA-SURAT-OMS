@@ -58,6 +58,7 @@ export const ModelName = {
   Dealer: 'Dealer',
   MasterArea: 'MasterArea',
   Product: 'Product',
+  ProductCategory: 'ProductCategory',
   FanRodSize: 'FanRodSize',
   FanRodColour: 'FanRodColour',
   FanRodGauge: 'FanRodGauge',
@@ -204,6 +205,18 @@ export const ProductScalarFieldEnum = {
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
+export const ProductCategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  sortOrder: 'sortOrder',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductCategoryScalarFieldEnum = (typeof ProductCategoryScalarFieldEnum)[keyof typeof ProductCategoryScalarFieldEnum]
 
 
 export const FanRodSizeScalarFieldEnum = {

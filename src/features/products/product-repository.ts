@@ -1,10 +1,16 @@
-import type { FanRodOption, FanRodOptionInput, FanRodOptionKind, FanRodVariantWeight, FanRodVariantWeightInput, Product, ProductInput } from "@/types/product";
+import type { FanRodOption, FanRodOptionInput, FanRodOptionKind, FanRodVariantWeight, FanRodVariantWeightInput, Product, ProductCategory, ProductCategoryInput, ProductInput } from "@/types/product";
 
 export interface ProductRepository {
   list(): Promise<Product[]>;
   getById(id: string): Promise<Product | null>;
   create(input: ProductInput): Promise<Product>;
   update(id: string, input: ProductInput): Promise<Product>;
+}
+
+export interface ProductCategoryRepository {
+  list(): Promise<ProductCategory[]>;
+  create(input: ProductCategoryInput): Promise<ProductCategory>;
+  update(id: string, input: ProductCategoryInput): Promise<ProductCategory>;
 }
 
 export interface FanRodOptionRepository {
